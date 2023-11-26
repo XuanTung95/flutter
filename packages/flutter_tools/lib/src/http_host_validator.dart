@@ -48,6 +48,9 @@ class HttpHostValidator extends DoctorValidator {
   /// Make a head request to the HTTP host for checking availability
   Future<String?> _checkHostAvailability(Uri host) async {
     try {
+      if (host.scheme == "file") {
+        return null;
+      }
       assert(!_activeHosts.contains(host));
       _activeHosts.add(host);
       final HttpClientRequest req = await _httpClient.headUrl(host);
