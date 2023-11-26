@@ -23,6 +23,111 @@ ENGINE_VERSION=`cat "$FLUTTER_ROOT/bin/internal/engine.version"`
 ENGINE_REALM=`cat "$FLUTTER_ROOT/bin/internal/engine.realm"`
 OS="$(uname -s)"
 
+# Download custom engine
+CUSTOM_ENGINE_VERSION=`cat "$FLUTTER_ROOT/bin/internal/custom_engine.version"`
+CUSTOM_ENGINE_IO_URL="$CUSTOM_ENGINE_VERSION/download.flutter.io.zip"
+CUSTOM_ENGINE_INFRA_URL="$CUSTOM_ENGINE_VERSION/flutter_infra_release.zip"
+CUSTOM_ENGINE_IO_ZIP="$FLUTTER_ROOT/bin/download.flutter.io.zip"
+CUSTOM_ENGINE_INFRA_ZIP="$FLUTTER_ROOT/bin/flutter_infra_release.zip"
+CUSTOM_ENGINE_PATH="$FLUTTER_ROOT/bin/custom_engine"
+
+if [[ ! -e "$CUSTOM_ENGINE_VERSION/download.flutter.io" || ! -e "$CUSTOM_ENGINE_VERSION/flutter_infra_release" ]]; then
+  command -v curl > /dev/null 2>&1 || {
+    >&2 echo
+    >&2 echo 'Missing "curl" tool. Unable to download Dart SDK.'
+    case "$OS" in
+      Darwin)
+        >&2 echo 'Consider running "brew install curl".'
+        ;;
+      Linux)
+        >&2 echo 'Consider running "sudo apt-get install curl".'
+        ;;
+      *)
+        >&2 echo "Please install curl."
+        ;;
+    esac
+    echo
+    exit 1
+  }
+  command -v unzip > /dev/null 2>&1 || {
+    >&2 echo
+    >&2 echo 'Missing "unzip" tool. Unable to extract Dart SDK.'
+    case "$OS" in
+      Darwin)
+        echo 'Consider running "brew install unzip".'
+        ;;
+      Linux)
+        echo 'Consider running "sudo apt-get install unzip".'
+        ;;
+      *)
+        echo "Please install unzip."
+        ;;
+    esac
+    echo
+    exit 1
+  }
+
+  verbose_curl=""
+  if [[ -n "$LUCI_CI" ]]; then
+    verbose_curl="--verbose"
+  fi
+  echo "Download custom engine from $CUSTOM_ENGINE_IO_URL"
+  curl ${verbose_curl} --retry 3 --continue-at - --location --output "$CUSTOM_ENGINE_IO_ZIP" "$CUSTOM_ENGINE_IO_URL" 2>&1 || {
+    curlExitCode=$?
+    if [ $curlExitCode != 33 ]; then
+      return $curlExitCode
+    fi
+    curl ${verbose_curl} --retry 3 --location --output "$CUSTOM_ENGINE_IO_ZIP" "$CUSTOM_ENGINE_IO_URL" 2>&1
+  } || {
+    >&2 echo
+    >&2 echo "Failed to retrieve the custom engine from: $CUSTOM_ENGINE_IO_URL"
+    >&2 echo "If you're located in China, please see this page:"
+    >&2 echo "  https://flutter.dev/community/china"
+    >&2 echo
+    rm -f -- "$CUSTOM_ENGINE_IO_ZIP"
+    exit 1
+  }
+  unzip -o -q "$CUSTOM_ENGINE_IO_ZIP" -d "$CUSTOM_ENGINE_PATH" || {
+    >&2 echo
+    >&2 echo "It appears that the downloaded file is corrupt; please try again."
+    >&2 echo "If this problem persists, please report the problem at:"
+    >&2 echo "  https://github.com/flutter/flutter/issues/new?template=1_activation.yml"
+    >&2 echo
+    rm -f -- "$CUSTOM_ENGINE_IO_ZIP"
+    exit 1
+  }
+
+  echo "Download custom engine from $CUSTOM_ENGINE_INFRA_URL"
+  curl ${verbose_curl} --retry 3 --continue-at - --location --output "$CUSTOM_ENGINE_INFRA_ZIP" "$CUSTOM_ENGINE_INFRA_URL" 2>&1 || {
+    curlExitCode=$?
+    if [ $curlExitCode != 33 ]; then
+      return $curlExitCode
+    fi
+    curl ${verbose_curl} --retry 3 --location --output "$CUSTOM_ENGINE_INFRA_ZIP" "$CUSTOM_ENGINE_INFRA_URL" 2>&1
+  } || {
+    >&2 echo
+    >&2 echo "Failed to retrieve the custom engine from: $CUSTOM_ENGINE_INFRA_URL"
+    >&2 echo "If you're located in China, please see this page:"
+    >&2 echo "  https://flutter.dev/community/china"
+    >&2 echo
+    rm -f -- "$CUSTOM_ENGINE_INFRA_ZIP"
+    exit 1
+  }
+  unzip -o -q "$CUSTOM_ENGINE_INFRA_ZIP" -d "$CUSTOM_ENGINE_PATH" || {
+    >&2 echo
+    >&2 echo "It appears that the downloaded file is corrupt; please try again."
+    >&2 echo "If this problem persists, please report the problem at:"
+    >&2 echo "  https://github.com/flutter/flutter/issues/new?template=1_activation.yml"
+    >&2 echo
+    rm -f -- "$CUSTOM_ENGINE_INFRA_ZIP"
+    exit 1
+  }
+
+  rm -f -- "$CUSTOM_ENGINE_IO_ZIP"
+  rm -f -- "$CUSTOM_ENGINE_INFRA_ZIP"
+fi
+# End download custom engine
+
 if [ ! -f "$ENGINE_STAMP" ] || [ "$ENGINE_VERSION" != `cat "$ENGINE_STAMP"` ]; then
   command -v curl > /dev/null 2>&1 || {
     >&2 echo

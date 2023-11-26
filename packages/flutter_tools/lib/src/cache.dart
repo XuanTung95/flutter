@@ -1094,7 +1094,7 @@ class ArtifactUpdater {
 
     while (retries > 0) {
       status = _logger.startProgress(
-        message,
+        "$message: $url",
       );
       try {
         _ensureExists(tempFile.parent);
@@ -1115,7 +1115,8 @@ class ArtifactUpdater {
           );
         }
         continue;
-      } on ArgumentError catch (error) {
+      } on ArgumentError catch (error, st) {
+        print("$error $st");
         final String? overrideUrl = _platform.environment[kFlutterStorageBaseUrl];
         if (overrideUrl != null && url.toString().contains(overrideUrl)) {
           _logger.printError(error.toString());
@@ -1186,7 +1187,27 @@ class ArtifactUpdater {
   /// See also:
   ///   * https://cloud.google.com/storage/docs/xml-api/reference-headers#xgooghash
   Future<void> _download(Uri url, File file, Status status) async {
-    final bool isAllowedUrl = _allowedBaseUrls.any((String baseUrl) => url.toString().startsWith(baseUrl));
+    // Copy file if Uri is a file
+    bool isFile = url.scheme == "file";
+    if (isFile) {
+      final inputFile = _fileSystem.file(url.path);
+      if (inputFile.existsSync()) {
+        await inputFile.copy(file.path);
+        return;
+      } else {
+        String? overrideUrl = _platform.environment[kFlutterStorageBaseUrl];
+        if (overrideUrl != null) {
+          overrideUrl = Uri.parse(overrideUrl).toString();
+          final oldUrl = url.toString();
+          url = Uri.parse(url.toString().replaceAll(overrideUrl!, 'https://storage.googleapis.com'));
+          _logger.printWarning('\nFile ${inputFile.path} not found, getting from original url ${url.toString()}');
+        } else {
+          _logger.printWarning('\nFile ${inputFile.path} not found!!!');
+        }
+      }
+    }
+
+    final bool isAllowedUrl = isFile || _allowedBaseUrls.any((String baseUrl) => url.toString().startsWith(baseUrl));
 
     // In tests make this a hard failure.
     assert(

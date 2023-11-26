@@ -44,6 +44,9 @@ SET dart=%dart_sdk_path%\bin\dart.exe
 
 SET exit_with_errorlevel=%FLUTTER_ROOT%/bin/internal/exit_with_errorlevel.bat
 
+REM Specify custom engine artifacts
+set FLUTTER_STORAGE_BASE_URL=file://%FLUTTER_ROOT%/bin/custom_engine
+
 REM Chaining the call to 'dart' and 'exit' with an ampersand ensures that
 REM Windows reads both commands into memory once before executing them. This
 REM avoids nasty errors that may otherwise occur when the dart command (e.g. as

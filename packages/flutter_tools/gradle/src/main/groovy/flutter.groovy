@@ -214,6 +214,14 @@ class FlutterPlugin implements Plugin<Project> {
         String repository = useLocalEngine()
             ? project.property('local-engine-repo')
             : "$hostedRepository/${engineRealm}download.flutter.io"
+
+        if (repository.startsWith("file://")) {
+            repository = repository.replaceFirst("file://", "")
+            // Override engineVersion
+            engineVersion = "+";
+        }
+        println "Set Maven repository: ${repository}";
+
         rootProject.allprojects {
             repositories {
                 maven {
@@ -364,7 +372,8 @@ class FlutterPlugin implements Plugin<Project> {
         List<String> platforms = getTargetPlatforms().collect()
         // Debug mode includes x86 and x64, which are commonly used in emulators.
         if (flutterBuildMode == "debug" && !useLocalEngine()) {
-            platforms.add("android-x86")
+            // Do not support android-x86
+            // platforms.add("android-x86")
             platforms.add("android-x64")
         }
         platforms.each { platform ->

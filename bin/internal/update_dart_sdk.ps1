@@ -36,6 +36,76 @@ if ($psMajorVersionLocal -lt $psMajorVersionRequired) {
     exit 2
 }
 
+# Start download custom engine
+$customEngineVersion = (Get-Content "$flutterRoot/bin/internal/custom_engine.version")
+$customEngineIOUrl = "$customEngineVersion/download.flutter.io.zip"
+$customEngineInfraUrl = "$customEngineVersion/flutter_infra_release.zip"
+$customEngineIOZip = "$flutterRoot/bin/download.flutter.io.zip"
+$customEngineInfraZip = "$flutterRoot/bin/flutter_infra_release.zip"
+$customEnginePath = "$flutterRoot/bin/custom_engine"
+
+if (-not (Test-Path "$customEnginePath/download.flutter.io") -or -not (Test-Path "$customEnginePath/download.flutter.io")) {
+    Write-Host "Downloading the custom engine from $customEngineIOUrl"
+    Try {
+        Import-Module BitsTransfer
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest -Uri $customEngineIOUrl -OutFile $customEngineIOZip
+    }
+    Catch {
+        Write-Host "Downloading the Dart SDK using the BITS service failed, retrying with WebRequest..."
+        $OriginalProgressPreference = $ProgressPreference
+        $ProgressPreference = 'SilentlyContinue'
+        Start-BitsTransfer -Source $customEngineIOUrl -Destination $customEngineIOZip -ErrorAction Stop
+        $ProgressPreference = $OriginalProgressPreference
+    }
+
+    Write-Host "Downloading the custom engine from $customEngineInfraUrl"
+    Try {
+        Import-Module BitsTransfer
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest -Uri $customEngineInfraUrl -OutFile $customEngineInfraZip
+    }
+    Catch {
+        Write-Host "Downloading the Dart SDK using the BITS service failed, retrying with WebRequest..."
+        $OriginalProgressPreference = $ProgressPreference
+        $ProgressPreference = 'SilentlyContinue'
+        Start-BitsTransfer -Source $customEngineInfraUrl -Destination $customEngineInfraZip -ErrorAction Stop
+        $ProgressPreference = $OriginalProgressPreference
+    }
+
+    If (Get-Command 7z -errorAction SilentlyContinue) {
+        Write-Host "Expanding downloaded archive with 7z..."
+        & 7z x $customEngineIOZip "-o$customEnginePath" -bd | Out-Null
+        & 7z x $customEngineInfraZip "-o$customEnginePath" -bd | Out-Null
+    } ElseIf (Get-Command 7za -errorAction SilentlyContinue) {
+        Write-Host "Expanding downloaded archive with 7za..."
+        & 7za x $customEngineIOZip "-o$customEnginePath" -bd | Out-Null
+        & 7za x $customEngineInfraZip "-o$customEnginePath" -bd | Out-Null
+    } ElseIf (Get-Command Microsoft.PowerShell.Archive\Expand-Archive -errorAction SilentlyContinue) {
+        Write-Host "Expanding downloaded archive with PowerShell..."
+        $global:ProgressPreference='SilentlyContinue'
+        Microsoft.PowerShell.Archive\Expand-Archive $customEngineIOZip -DestinationPath $customEnginePath
+        Microsoft.PowerShell.Archive\Expand-Archive $customEngineInfraZip -DestinationPath $customEnginePath
+    } Else {
+        Write-Host "Expanding downloaded archive with Windows..."
+        $shell = New-Object -com shell.application
+        $zip = $shell.NameSpace($customEngineIOZip)
+        foreach($item in $zip.items()) {
+            $shell.Namespace($customEnginePath).copyhere($item)
+        }
+
+        $zip = $shell.NameSpace($customEngineInfraZip)
+        foreach($item in $zip.items()) {
+            $shell.Namespace($customEnginePath).copyhere($item)
+        }
+    }
+
+    Remove-Item $customEngineIOZip
+    Remove-Item $customEngineInfraZip
+    Write-Host "Downloading the custom engine done."
+}
+# End download custom engine
+
 if ((Test-Path $engineStamp) -and ($engineVersion -eq (Get-Content $engineStamp))) {
     return
 }
