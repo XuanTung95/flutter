@@ -1197,6 +1197,7 @@ class ArtifactUpdater {
       } else {
         String? overrideUrl = _platform.environment[kFlutterStorageBaseUrl];
         if (overrideUrl != null) {
+          overrideUrl = Uri.parse(overrideUrl).toString();
           final oldUrl = url.toString();
           url = Uri.parse(url.toString().replaceAll(overrideUrl!, 'https://storage.googleapis.com'));
           _logger.printWarning('\nFile ${inputFile.path} not found, getting from original url ${url.toString()}');
